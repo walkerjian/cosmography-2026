@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Implementation Map — High Redshift Cosmography (2012) → Reproduction Baseline</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121933; --ink:#e9eefc; --muted:#a8b3d1; --line:#2a3668;
+    --accent:#8ab4ff; --good:#7dd3a7; --warn:#f6c177; --bad:#f38ba8; --code:#0e1530;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 20px 80px}
+  h1,h2,h3{line-height:1.15}
+  h1{font-size:2.1rem;margin:0 0 10px}
+  h2{font-size:1.35rem;margin:36px 0 12px;padding-top:8px;border-top:1px solid var(--line)}
+  h3{font-size:1.05rem;margin:24px 0 8px}
+  p,li{color:var(--ink)}
+  .lede{color:var(--muted);max-width:80ch}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 14px;margin:18px 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+  .card{background:rgba(255,255,255,.02);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .small{font-size:.94rem;color:var(--muted)}
+  code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto}
+  table{width:100%;border-collapse:collapse;margin:10px 0 6px}
+  th,td{padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+  th{color:var(--accent);font-weight:700}
+  .tag{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:.82rem;margin-right:6px;margin-bottom:6px}
+  .good{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .toc a{color:var(--accent);text-decoration:none}
+  .toc li{margin:4px 0}
+  ul.check li{margin:7px 0}
+  .footer{margin-top:40px;color:var(--muted);font-size:.92rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="tag">plain HTML</div>
+    <div class="tag">baseline-first</div>
+    <div class="tag">paper archaeology</div>
+    <div class="tag">notebook scaffold</div>
+    <h1>Implementation Map</h1>
+    <p class="lede"><strong>Target paper:</strong> <em>High redshift cosmography: new results and implication for dark energy</em> (Demianski et al., 2012).</p>
+    <p class="lede">This document is designed to be the bridge between the paper and a faithful reproduction notebook. It prioritises chain-of-custody: first recreate what the paper actually did, then isolate later changes in data or method.</p>
+  </header>
+
+  <section class="panel toc">
+    <h2 style="border-top:none;padding-top:0;margin-top:0">Contents</h2>
+    <ol>
+      <li><a href="#scope">Scope and success criteria</a></li>
+      <li><a href="#claims">Core claims to reproduce</a></li>
+      <li><a href="#equations">Equation-to-code map</a></li>
+      <li><a href="#datasets">Dataset inventory</a></li>
+      <li><a href="#likelihood">Likelihood and inference map</a></li>
+      <li><a href="#targets">Reproduction targets</a></li>
+      <li><a href="#ambiguities">Ambiguities and traps</a></li>
+      <li><a href="#repo">Recommended repo and notebook structure</a></li>
+      <li><a href="#plan">Execution plan</a></li>
+    </ol>
+  </section>
+
+  <section id="scope">
+    <h2>1) Scope and success criteria</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Primary goal</h3>
+        <p>Reproduce the paper’s <strong>baseline cosmographic analysis</strong> as faithfully as practical before introducing any 2026 updates.</p>
+      </div>
+      <div class="card">
+        <h3>Not the goal yet</h3>
+        <p>Do <strong>not</strong> improve the method, refresh priors, replace datasets, or “fix” cosmography in the baseline notebook.</p>
+      </div>
+      <div class="card">
+        <h3>Success condition</h3>
+        <p>Recover the paper’s main tables, key posterior behaviour, and headline qualitative claims within documented tolerance.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Baseline success criteria</h3>
+      <ul class="check">
+        <li>Recreate the paper’s luminosity-distance series and Hubble-series machinery.</li>
+        <li>Implement both <code>z</code> and <code>y = z/(1+z)</code> parameterisations.</li>
+        <li>Reproduce “Cosmography I” and “Cosmography II”.</li>
+        <li>Recover Table 1 and Table 2 to within reasonable numerical tolerance.</li>
+        <li>Recover qualitative statements: negative <code>q0</code>, weakly constrained <code>s0</code>, unconstrained <code>l0</code>, faster chain convergence in <code>y</code>, and tension in <code>j0</code> versus ΛCDM.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="claims">
+    <h2>2) Core claims to reproduce</h2>
+    <table>
+      <thead><tr><th>Claim</th><th>What to test</th><th>Status target</th></tr></thead>
+      <tbody>
+        <tr><td>Present acceleration is clearly detected</td><td>Posterior for <code>q0</code> mostly below zero</td><td class="good">Must reproduce</td></tr>
+        <tr><td><code>j0</code> differs from ΛCDM value 1</td><td>Posterior location and marginal plot for <code>j0</code></td><td class="warn">Reproduce cautiously</td></tr>
+        <tr><td><code>s0</code> weakly constrained, <code>l0</code> unconstrained</td><td>Posterior widths and quoted 2σ intervals</td><td class="good">Must reproduce</td></tr>
+        <tr><td><code>y</code>-redshift helps convergence</td><td>Compare chain mixing and R̂ / Gelman-Rubin style summaries</td><td class="good">Must document</td></tr>
+        <tr><td>GRBs extend reach and alter constraints</td><td>Compare Cosmography I vs II</td><td class="good">Must reproduce</td></tr>
+        <tr><td>Fifth-order truncation becomes unreliable at high redshift</td><td>Residual or truncation-stress section</td><td class="warn">Prefer to reproduce qualitatively</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="equations">
+    <h2>3) Equation-to-code map</h2>
+
+    <div class="panel">
+      <h3>3.1 Cosmographic state variables</h3>
+      <p>Implement the paper’s definitions directly, with present-day parameters <code>H0, q0, j0, s0, l0</code>.</p>
+<pre>H(t) = (1/a) da/dt
+q(t) = -(1/a) (d²a/dt²) / H²
+j(t) = +(1/a) (d³a/dt³) / H³
+s(t) = +(1/a) (d⁴a/dt⁴) / H⁴
+l(t) = +(1/a) (d⁵a/dt⁵) / H⁵</pre>
+      <p class="small">Paper sections: Eqs. (2)–(10).</p>
+    </div>
+
+    <div class="panel">
+      <h3>3.2 Scale-factor and distance expansions</h3>
+      <table>
+        <thead><tr><th>Paper item</th><th>Use in code</th><th>Implementation note</th></tr></thead>
+        <tbody>
+          <tr><td>Eq. (11)</td><td>Scale factor Taylor expansion</td><td>Mostly documentary; useful for symbolic derivation checks</td></tr>
+          <tr><td>Eqs. (13)–(24)</td><td><code>z(D)</code> and inverted <code>D(z)</code></td><td>Good unit-test source</td></tr>
+          <tr><td>Eqs. (29)–(41)</td><td>Luminosity distance series <code>dL(z)</code></td><td>Core observable for SNIa and GRBs</td></tr>
+          <tr><td>Eqs. (42)–(47)</td><td>Angular-diameter distance</td><td>Probably optional for baseline unless needed for cross-checks</td></tr>
+          <tr><td>Eqs. (48)–(49)</td><td>Hubble-series expansion in redshift</td><td>Needed for BAO/H(z)/shift-parameter machinery</td></tr>
+          <tr><td>Eq. (50)</td><td><code>y = z/(1+z)</code></td><td>Implement as alternate coordinate path, not as a patch</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>3.3 Observable layer</h3>
+      <table>
+        <thead><tr><th>Observable</th><th>Paper formula</th><th>Notebook function</th></tr></thead>
+        <tbody>
+          <tr><td>Distance modulus</td><td>Eq. (51)</td><td><code>mu_theory(z, params, mode="z"|"y")</code></td></tr>
+          <tr><td>SN minimized nuisance form</td><td>Eqs. (53)–(57)</td><td><code>chi2_sn_marginalized(...)</code></td></tr>
+          <tr><td>GRB Amati HD</td><td>Uses same <code>mu(z)</code> target</td><td>Initial baseline can ingest already-calibrated GRB HD if found</td></tr>
+          <tr><td>LX–Ta GRB distance modulus</td><td>Eqs. (62)–(64)</td><td>Optional branch unless needed for paper figure archaeology</td></tr>
+          <tr><td>BAO ruler summary</td><td>Eqs. (65)–(67)</td><td><code>dv(z), rs(zd), dz_bao(z)</code></td></tr>
+          <tr><td>Shift parameter</td><td>Eq. (71)</td><td><code>shift_parameter_R(params)</code></td></tr>
+          <tr><td>Hubble data</td><td>Section 4 narrative</td><td><code>chi2_hz(params, hz_data)</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>3.4 Recommended unit tests</h3>
+      <ul class="check">
+        <li><code>dL(z→0) ~ cz/H0</code>.</li>
+        <li><code>mu_theory</code> monotonic in <code>z</code> over physical ranges used.</li>
+        <li><code>H(z)^2 &gt; 0</code> and <code>dL(z) &gt; 0</code> for allowed samples, matching the paper’s positivity cuts.</li>
+        <li><code>z</code> and <code>y</code> implementations agree at low redshift.</li>
+        <li>Series coefficient unit tests copied directly from the paper equations.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="datasets">
+    <h2>4) Dataset inventory</h2>
+
+    <div class="panel">
+      <h3>4.1 Data named in the paper</h3>
+      <table>
+        <thead><tr><th>Dataset</th><th>Role in paper</th><th>Baseline action</th><th>2026 action later</th></tr></thead>
+        <tbody>
+          <tr><td>Union2 SNIa</td><td>Main low/intermediate-z distance ladder, 557 usable SNe</td><td class="good">Use for baseline reproduction</td><td>Replace with Pantheon+</td></tr>
+          <tr><td>Calibrated Amati GRB HD</td><td>High-z extension, 109 GRBs</td><td class="warn">Use if recoverable in paper-linked sources</td><td>Reassess calibration strategy</td></tr>
+          <tr><td>LX–Ta GRB HD</td><td>Secondary GRB construction path</td><td class="warn">Document; probably optional in baseline unless reproducing all figures</td><td>Optional extension only</td></tr>
+          <tr><td>BAO from Percival et al. 2010</td><td>Standard-ruler prior at z=0.2 and 0.35</td><td class="good">Use exact values/covariance if located</td><td>Replace with DESI BAO</td></tr>
+          <tr><td>Stern et al. 2010 H(z)</td><td>11-point chronometer-like H(z) set</td><td class="good">Use for baseline</td><td>Replace with modern compilation</td></tr>
+          <tr><td>SHOES h prior</td><td>Gaussian prior on h</td><td class="good">Keep exact baseline number</td><td>Refresh later</td></tr>
+          <tr><td>WMAP7 ωm and R prior</td><td>Degeneracy breaking + shift parameter</td><td class="good">Keep exact baseline number</td><td>Likely remove or rethink later</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>4.2 Data dependency hierarchy</h3>
+<pre>Tier A: absolutely needed for baseline
+  - Union2 usable sample
+  - BAO points + covariance
+  - H(z) 11-point sample
+  - exact numerical priors on h, ωm, R
+
+Tier B: needed to reproduce Cosmography II fully
+  - calibrated Amati GRB Hubble diagram (distance moduli + errors)
+
+Tier C: useful but not required on day 1
+  - LX–Ta sample
+  - exact figure source files from authors if available
+  - original chain settings if recoverable</pre>
+    </div>
+  </section>
+
+  <section id="likelihood">
+    <h2>5) Likelihood and inference map</h2>
+
+    <div class="panel">
+      <h3>5.1 Parameter vector</h3>
+<pre>Baseline parameter vector p =
+  [h, q0, j0, s0, l0]
+and, where required by the paper's prior structure,
+  ωm or Ωm h²
+used in Gaussian prior / shift parameter terms.</pre>
+      <p class="small">The paper combines cosmography with priors on <code>h</code> and <code>ωm = Ωm h²</code>, then uses BAO, the CMB shift parameter, and H(z).</p>
+    </div>
+
+    <div class="panel">
+      <h3>5.2 Likelihood blocks</h3>
+      <table>
+        <thead><tr><th>Block</th><th>Paper hook</th><th>Code module</th></tr></thead>
+        <tbody>
+          <tr><td>SN likelihood</td><td>Eqs. (52)–(57)</td><td><code>likelihoods/sn.py</code></td></tr>
+          <tr><td>GRB likelihood</td><td>Eq. (69) style or combined in Eq. (70)</td><td><code>likelihoods/grb.py</code></td></tr>
+          <tr><td>BAO term</td><td>Eq. (70), BAO paragraph</td><td><code>likelihoods/bao.py</code></td></tr>
+          <tr><td>Shift parameter term</td><td>Eq. (71) + Gaussian prior</td><td><code>likelihoods/cmb_shift.py</code></td></tr>
+          <tr><td>H(z) term</td><td>Eq. (70), H(z) paragraph</td><td><code>likelihoods/hz.py</code></td></tr>
+          <tr><td>Physical cuts</td><td>Positivity constraints</td><td><code>constraints.py</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>5.3 MCMC settings to mirror</h3>
+      <ul class="check">
+        <li>Paper says: two times four independent chains, about 100000 elements each.</li>
+        <li>Convergence check: Gelman-Rubin style criterion with <code>R - 1 ~ 0.01</code>.</li>
+        <li>Discard first 30% as burn-in.</li>
+        <li>Thin chains before coadding.</li>
+      </ul>
+      <p class="small">Implementation note: modern libraries can do this more cleanly, but baseline mode should keep these choices visible and documented.</p>
+    </div>
+
+    <div class="panel">
+      <h3>5.4 Baseline run modes</h3>
+<pre>Mode A: z-Cosmography I
+  SN + BAO + H(z) + priors
+
+Mode B: y-Cosmography I
+  same data, y-redshift implementation
+
+Mode C: z-Cosmography II
+  SN + GRB + BAO + H(z) + priors
+
+Mode D: y-Cosmography II
+  same data, y-redshift implementation</pre>
+    </div>
+  </section>
+
+  <section id="targets">
+    <h2>6) Reproduction targets</h2>
+
+    <div class="panel">
+      <h3>6.1 Tables</h3>
+      <table>
+        <thead><tr><th>Target</th><th>What to recreate</th><th>Tolerance expectation</th></tr></thead>
+        <tbody>
+          <tr><td>Table 1</td><td>Cosmography I best-fit, mean, 2σ ranges for <code>h, q0, j0, s0, l0</code></td><td>Numerically close</td></tr>
+          <tr><td>Table 2</td><td>Cosmography II best-fit, mean, 2σ ranges</td><td>Numerically close if GRB HD is matched</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>6.2 Figures worth targeting first</h3>
+      <table>
+        <thead><tr><th>Priority</th><th>Figure role</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Marginalized PDF of <code>q0</code></td><td>Checks present acceleration claim</td></tr>
+          <tr><td>2</td><td>Marginalized PDF of <code>j0</code></td><td>Checks ΛCDM tension claim</td></tr>
+          <tr><td>3</td><td>Confidence regions in <code>(h, q0)</code> and <code>(q0, j0)</code></td><td>Checks posterior geometry</td></tr>
+          <tr><td>4</td><td>Observational data vs maximum-likelihood curve</td><td>Checks observable implementation end-to-end</td></tr>
+          <tr><td>5</td><td>High-z truncation / residual discussion figure</td><td>Checks their own stated method limit</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <h3>6.3 Output artefacts for the notebook</h3>
+<pre>outputs/
+  figures/
+    fig_q0_pdf.png
+    fig_j0_pdf.png
+    fig_corner_h_q0_j0.png
+    fig_hd_fit_overlay.png
+    fig_truncation_residuals.png
+  tables/
+    table1_reproduced.csv
+    table2_reproduced.csv
+    reproduction_comparison.md
+  chains/
+    cosmographyI_z.nc
+    cosmographyI_y.nc
+    cosmographyII_z.nc
+    cosmographyII_y.nc</pre>
+    </div>
+  </section>
+
+  <section id="ambiguities">
+    <h2>7) Ambiguities and traps</h2>
+
+    <div class="panel">
+      <h3>7.1 Known ambiguity list</h3>
+      <ul class="check">
+        <li><strong>Exact data products:</strong> the paper names datasets, but not every machine-readable file path.</li>
+        <li><strong>GRB calibration provenance:</strong> reproducing Cosmography II depends on recovering the same calibrated GRB HD, not merely “some” Amati sample.</li>
+        <li><strong>CMB shift parameter use:</strong> this is baked into the baseline, but later should be treated as methodologically fragile in a pure cosmographic context.</li>
+        <li><strong>Order language:</strong> the paper speaks of “fifth order” but the observable series implementations can look like fourth-order in <code>z</code> after factoring out the leading term; document this carefully.</li>
+        <li><strong>Flatness assumption:</strong> the paper says spatially flat models only for the working analysis; baseline code should expose this explicitly.</li>
+        <li><strong>Positive-definiteness cuts:</strong> these are not a tiny detail; they shape the sampled parameter volume.</li>
+      </ul>
+    </div>
+
+    <div class="panel">
+      <h3>7.2 Things likely to bite during implementation</h3>
+      <table>
+        <thead><tr><th>Issue</th><th>Consequence</th><th>Mitigation</th></tr></thead>
+        <tbody>
+          <tr><td>Mixing nuisance parameter handling for SN with later modern covariance styles</td><td>Silent mismatch in χ²</td><td>Keep baseline SN block isolated</td></tr>
+          <tr><td>Using updated h or matter priors too early</td><td>Moves posteriors before you know why</td><td>Freeze all legacy prior numbers in baseline mode</td></tr>
+          <tr><td>Implementing only one of z/y and inferring the other</td><td>Conflates parameterisation and numerics</td><td>Build both paths explicitly</td></tr>
+          <tr><td>Substituting modern MCMC defaults</td><td>Can alter effective posterior summaries</td><td>Keep old-style settings available, even if slow</td></tr>
+          <tr><td>Skipping GRB sample archaeology</td><td>Cosmography II will not be faithful</td><td>Mark Cosmography II as provisional until source matched</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="repo">
+    <h2>8) Recommended repo and notebook structure</h2>
+
+    <div class="panel">
+<pre>cosmography-2026/
+  README.md
+  environment.yml
+  requirements.txt
+  data/
+    legacy/
+      union2/
+      grb_amati/
+      grb_lxta/
+      bao_percival2010/
+      hz_stern2010/
+      priors/
+    modern/
+      pantheon_plus/
+      desi_bao/
+      hz_modern/
+  docs/
+    implementation_map.html
+    equation_map.md
+    data_provenance.md
+    ambiguity_log.md
+  notebooks/
+    00_paper_archaeology.ipynb
+    01_reproduce_original.ipynb
+    02_validate_reproduction.ipynb
+    03_update_data_same_method.ipynb
+    04_update_method_same_data.ipynb
+    05_robustness_grid.ipynb
+  src/
+    config.py
+    constants.py
+    transforms.py
+    cosmography_series.py
+    observables.py
+    constraints.py
+    io_union2.py
+    io_grb.py
+    io_bao.py
+    io_hz.py
+    likelihood_sn.py
+    likelihood_grb.py
+    likelihood_bao.py
+    likelihood_cmb.py
+    likelihood_hz.py
+    sampler.py
+    diagnostics.py
+    plotting.py
+  outputs/
+    figures/
+    tables/
+    chains/</pre>
+    </div>
+
+    <div class="panel">
+      <h3>Notebook responsibilities</h3>
+      <table>
+        <thead><tr><th>Notebook</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>00_paper_archaeology.ipynb</code></td><td>Extract equations, numbers, targets, and unresolved ambiguities</td></tr>
+          <tr><td><code>01_reproduce_original.ipynb</code></td><td>Faithful end-to-end baseline implementation</td></tr>
+          <tr><td><code>02_validate_reproduction.ipynb</code></td><td>Compare your results against paper tables/figures</td></tr>
+          <tr><td><code>03_update_data_same_method.ipynb</code></td><td>Swap in 2026-era data with the legacy method frozen</td></tr>
+          <tr><td><code>04_update_method_same_data.ipynb</code></td><td>Hold data fixed, modernise the approximation machinery</td></tr>
+          <tr><td><code>05_robustness_grid.ipynb</code></td><td>Stress tests, ablations, redshift cuts, summary comparisons</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="plan">
+    <h2>9) Execution plan</h2>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Step 1</h3>
+        <p>Freeze the legacy assumptions and numbers into a config file.</p>
+      </div>
+      <div class="card">
+        <h3>Step 2</h3>
+        <p>Implement series expansions and low-level unit tests.</p>
+      </div>
+      <div class="card">
+        <h3>Step 3</h3>
+        <p>Implement SN-only baseline and verify distance-modulus behaviour.</p>
+      </div>
+      <div class="card">
+        <h3>Step 4</h3>
+        <p>Add BAO, shift parameter, and H(z); reproduce Cosmography I.</p>
+      </div>
+      <div class="card">
+        <h3>Step 5</h3>
+        <p>Recover the calibrated GRB HD and reproduce Cosmography II.</p>
+      </div>
+      <div class="card">
+        <h3>Step 6</h3>
+        <p>Only after that, branch into 2026 data and method updates.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Immediate next deliverable</h3>
+      <p>A good next artefact is <strong><code>00_paper_archaeology.ipynb</code></strong>: a notebook that contains the exact constants, priors, equations, table targets, and a machine-readable checklist of missing data assets.</p>
+      <pre>{
+  "baseline_modes": ["z_Cosmography_I", "y_Cosmography_I", "z_Cosmography_II", "y_Cosmography_II"],
+  "parameters": ["h", "q0", "j0", "s0", "l0"],
+  "legacy_priors": {
+    "h": {"mean": 0.742, "sigma": 0.036},
+    "omega_m_h2": {"mean": 0.1356, "sigma": 0.0034},
+    "R": {"mean": 1.725, "sigma": 0.019}
+  },
+  "chain_settings": {
+    "independent_chains": 8,
+    "elements_per_chain": 100000,
+    "burn_in_fraction": 0.30,
+    "convergence_target": "R-1 ~ 0.01"
+  }
+}</pre>
+    </div>
+  </section>
+
+  <div class="footer">
+    Built as a baseline-first implementation map. Intended use: accompany the first notebook and keep later upgrades honest.
+  </div>
+</div>
+</body>
+</html>

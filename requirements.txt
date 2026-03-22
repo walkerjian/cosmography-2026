@@ -1,0 +1,10 @@
+numpy
+scipy
+pandas
+matplotlib
+jupyterlab
+arviz
+emcee
+corner
+h5py
+numba
